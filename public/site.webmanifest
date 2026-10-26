@@ -4,18 +4,26 @@
   "description": "Smart Retail Billing, Barcode Scan, Dynamic Amount UPI QR & Stock Management",
   "start_url": "/",
   "display": "standalone",
-  "orientation": "portrait-primary",
+  "orientation": "any",
   "background_color": "#F2F2F7",
   "theme_color": "#DC2626",
+  "scope": "/",
   "icons": [
     {
-      "src": "/pwa-icon.png",
+      "src": "/pwa-icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
-      "src": "/pwa-icon.png",
+      "src": "/pwa-icon-512.png",
       "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
       "type": "image/png"
     }
   ]

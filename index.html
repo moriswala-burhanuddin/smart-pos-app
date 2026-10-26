@@ -11,12 +11,27 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="SmartBill" />
+    <link rel="icon" type="image/png" href="/pwa-icon-192.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Service Worker for real Native PWA / WebAPK install -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('/sw.js').then(function(reg) {
+            console.log('SmartBill Service Worker active:', reg.scope);
+          }).catch(function(err) {
+            console.warn('SW registration issue:', err);
+          });
+        });
+      }
+    </script>
   </head>
   <body class="bg-ios-bg text-slate-900 font-sans antialiased min-h-screen">
     <div id="root"></div>
