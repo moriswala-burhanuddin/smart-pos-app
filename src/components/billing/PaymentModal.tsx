@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { usePOS } from '../../context/POSContext';
 import type { PaymentMethod } from '../../types/pos';
 import { buildUpiPaymentUrl, generateQrDataUrl } from '../../utils/qr';
-import { QrCode, Banknote, CreditCard, X, CheckCircle2, User, Phone, ShieldCheck, RefreshCw } from 'lucide-react';
+import { QrCode, Banknote, CreditCard, X, CheckCircle2, User, Phone, ShieldCheck, RefreshCw, Wifi, Radio, Zap } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { playScanBeep } from '../../utils/audio';
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -24,9 +25,18 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   const [upiQrUrl, setUpiQrUrl] = useState<string>('');
   const [timeLeft, setTimeLeft] = useState<number>(180); // 3 minutes
 
+  // Auto-detect & Card Tapping state
+  const [isAutoDetecting, setIsAutoDetecting] = useState<boolean>(false);
+  const [autoDetectCountdown, setAutoDetectCountdown] = useState<number>(3);
+  const [isCardTapping, setIsCardTapping] = useState<boolean>(false);
+
   // Generate dynamic amount-filled UPI QR whenever opened or amount changes
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      setIsAutoDetecting(false);
+      setIsCardTapping(false);
+      return;
+    }
 
     setCashReceived(cartTotal);
     setTimeLeft(180);
@@ -49,6 +59,21 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
     return () => clearInterval(timer);
   }, [isOpen, cartTotal, settings.upiId, settings.upiMerchantName]);
 
+  // Handle auto-detect simulation timer
+  useEffect(() => {
+    if (!isAutoDetecting) return;
+    if (autoDetectCountdown > 0) {
+      const timer = setTimeout(() => {
+        setAutoDetectCountdown((prev) => prev - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    } else {
+      // Auto payment arrival triggered!
+      setIsAutoDetecting(false);
+      handleFinalCheckout('UPI');
+    }
+  }, [isAutoDetecting, autoDetectCountdown]);
+
   if (!isOpen) return null;
 
   const handleFinalCheckout = (payMethod: PaymentMethod = method) => {
@@ -65,6 +90,15 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
     // 3. Close payment modal & open receipt
     onPaymentSuccess();
+  };
+
+  // Card contactless tap simulator
+  const handleSimulateCardTap = () => {
+    setIsCardTapping(true);
+    playScanBeep();
+    setTimeout(() => {
+      handleFinalCheckout('CARD');
+    }, 1200);
   };
 
   const cashChange = Math.max(0, cashReceived - cartTotal);
@@ -113,7 +147,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               }`}
             >
               <QrCode className="w-4 h-4" />
-              <span>UPI QR (Auto)</span>
+              <span>UPI QR</span>
             </button>
 
             <button
@@ -139,7 +173,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               }`}
             >
               <CreditCard className="w-4 h-4" />
-              <span>Card / POS</span>
+              <span>Tap / Card</span>
             </button>
           </div>
 
@@ -174,22 +208,48 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                   <span>Amount Pre-filled Automatically in Customer's App</span>
                 </div>
                 <p className="text-xs text-slate-500 font-medium">
-                  Scan using Google Pay, PhonePe, Paytm, or any UPI App to pay exact <strong>₹{cartTotal}</strong>
+                  Scan using Google Pay, PhonePe, Paytm, or BHIM to pay exact <strong>₹{cartTotal}</strong>
                 </p>
                 <p className="text-[10px] text-slate-400 font-mono">
                   UPI VPA: {settings.upiId} • Expiring in {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
                 </p>
               </div>
 
-              {/* Instant Simulator / Payment Confirm Button */}
-              <button
-                type="button"
-                onClick={() => handleFinalCheckout('UPI')}
-                className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-md transition-all active:scale-[0.98] flex items-center justify-center gap-2"
-              >
-                <CheckCircle2 className="w-4 h-4 stroke-[2.5]" />
-                <span>Payment Received (₹{cartTotal}) — Print Bill</span>
-              </button>
+              {/* Live Webhook / Auto-Detect Simulator */}
+              {isAutoDetecting ? (
+                <div className="p-3 bg-purple-50 border border-purple-200 rounded-2xl text-purple-900 text-xs font-bold space-y-1 animate-pulse">
+                  <div className="flex items-center justify-center gap-1.5">
+                    <Radio className="w-4 h-4 text-purple-600 animate-spin" />
+                    <span>Listening to Bank Webhook / Soundbox...</span>
+                  </div>
+                  <p className="text-[11px] text-purple-700">
+                    Payment arriving in {autoDetectCountdown}s ➔ Auto-printing invoice!
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsAutoDetecting(true);
+                      setAutoDetectCountdown(3);
+                    }}
+                    className="py-3 bg-purple-600 hover:bg-purple-700 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-xs transition-all active:scale-[0.98] flex items-center justify-center gap-1.5"
+                  >
+                    <Zap className="w-3.5 h-3.5" />
+                    <span>Auto-Detect Demo (3s)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleFinalCheckout('UPI')}
+                    className="py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-xs transition-all active:scale-[0.98] flex items-center justify-center gap-1.5"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5 stroke-[2.5]" />
+                    <span>Confirm Received</span>
+                  </button>
+                </div>
+              )}
 
             </div>
           )}
@@ -257,25 +317,50 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
             </div>
           )}
 
-          {/* CARD VIEW */}
+          {/* CARD CONTACTLESS NFC TAP / CHIP SCAN VIEW */}
           {method === 'CARD' && (
             <div className="bg-slate-50 rounded-3xl p-5 border border-slate-200 text-center space-y-4">
-              <div className="w-12 h-12 rounded-2xl bg-blue-100 text-blue-600 mx-auto flex items-center justify-center">
-                <CreditCard className="w-6 h-6" />
-              </div>
-              <div>
-                <h4 className="font-extrabold text-slate-900 text-sm">Swipe or Tap Card on EDC Machine</h4>
-                <p className="text-xs text-slate-500">Collect <strong>₹{cartTotal}</strong> on external bank POS machine</p>
+              
+              {/* Contactless Visual */}
+              <div className="relative w-44 h-28 mx-auto bg-gradient-to-tr from-slate-900 to-slate-800 rounded-2xl p-3 text-white flex flex-col justify-between shadow-md border border-slate-700">
+                <div className="flex items-center justify-between">
+                  <div className="w-7 h-5 bg-amber-400/80 rounded-sm" /> {/* Chip */}
+                  <Wifi className="w-4 h-4 text-slate-300 rotate-90" /> {/* Contactless Icon */}
+                </div>
+                <div className="text-left font-mono text-xs tracking-widest text-slate-400">
+                  •••• •••• •••• 8820
+                </div>
+                <div className="flex items-center justify-between text-[10px] font-bold text-slate-300">
+                  <span>CONTACTLESS NFC</span>
+                  <span>₹{cartTotal}</span>
+                </div>
               </div>
 
-              <button
-                type="button"
-                onClick={() => handleFinalCheckout('CARD')}
-                className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-md transition-all active:scale-[0.98] flex items-center justify-center gap-2"
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Card Approved — Complete Sale</span>
-              </button>
+              <div>
+                <h4 className="font-extrabold text-slate-900 text-sm">
+                  Fast Contactless Tap & Swipe (Zero Details Needed)
+                </h4>
+                <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed mt-0.5">
+                  Customer taps debit/credit card or smartwatch on counter reader. No card numbers or OTP required.
+                </p>
+              </div>
+
+              {isCardTapping ? (
+                <div className="py-3 bg-blue-50 border border-blue-200 rounded-2xl text-blue-900 text-xs font-bold flex items-center justify-center gap-2 animate-pulse">
+                  <RefreshCw className="w-4 h-4 animate-spin text-blue-600" />
+                  <span>NFC Chip Read Successful! Authorizing ₹{cartTotal}...</span>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleSimulateCardTap}
+                  className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-md transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                >
+                  <Wifi className="w-4 h-4 rotate-90" />
+                  <span>Tap Card on Reader (Auto Approve)</span>
+                </button>
+              )}
+
             </div>
           )}
 

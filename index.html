@@ -20,6 +20,40 @@
   </head>
   <body class="bg-ios-bg text-slate-900 font-sans antialiased min-h-screen">
     <div id="root"></div>
+
+    <!-- Script to remove Netlify badge/drawer if injected -->
+    <script>
+      (function() {
+        function removeBadges() {
+          var badNodes = document.querySelectorAll(
+            'div[class*="netlify"], div[id*="netlify"], a[href*="netlify.com"], a[href*="netlify.app"], [data-netlify-deploy-id], [class*="netlify-badge"], iframe[src*="netlify"], #netlify-identity-widget, .netlify-feedback'
+          );
+          badNodes.forEach(function(node) {
+            if (node && node.parentNode && node.tagName !== 'SCRIPT' && node.tagName !== 'BODY' && node.tagName !== 'HTML') {
+              node.style.display = 'none';
+              node.parentNode.removeChild(node);
+            }
+          });
+          var allElements = document.getElementsByTagName('*');
+          for (var i = 0; i < allElements.length; i++) {
+            var el = allElements[i];
+            if (el.tagName !== 'SCRIPT' && el.tagName !== 'BODY' && el.tagName !== 'HTML' && el.tagName !== 'HEAD') {
+              if (el.childNodes.length === 1 && el.textContent && el.textContent.indexOf('Powered by Netlify') !== -1) {
+                var target = el.closest('div') || el;
+                target.style.display = 'none';
+                if (target.parentNode) target.parentNode.removeChild(target);
+              }
+            }
+          }
+        }
+        removeBadges();
+        window.addEventListener('load', removeBadges);
+        document.addEventListener('DOMContentLoaded', removeBadges);
+        var obs = new MutationObserver(removeBadges);
+        obs.observe(document.documentElement, { childList: true, subtree: true });
+      })();
+    </script>
+
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
